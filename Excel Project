@@ -1,0 +1,69 @@
+# Excel Credit Risk Scoring Model Generator (Python Script)
+# This script generates a basic Excel-based credit risk scoring model
+# with scoring buckets and a sample applicant dataset.
+
+import pandas as pd
+import numpy as np
+
+
+# 1. Define Scoring Buckets
+
+age_buckets = [(0, 24, 40), (25, 34, 60), (35, 44, 80), (45, 100, 100)]
+income_buckets = [(0, 39999, 40), (40000, 59999, 60), (60000, 79999, 80), (80000, float('inf'), 100)]
+loan_buckets = [(15000, float('inf'), 40), (10000, 14999, 60), (5000, 9999, 80), (0, 4999, 100)]
+credit_buckets = [(0, 649, 40), (650, 699, 60), (700, 749, 80), (750, float('inf'), 100)]
+
+
+# 2. Sample Applicant Data
+
+data = {
+    'Applicant': [f'Applicant {i+1}' for i in range(10)],
+    'Age': np.random.randint(20, 60, 10),
+    'Income': np.random.randint(30000, 100000, 10),
+    'Loan Amount': np.random.randint(3000, 20000, 10),
+    'Credit Score': np.random.randint(600, 800, 10)
+}
+df = pd.DataFrame(data)
+
+
+# 3. Apply Bucket Scoring Logic
+
+def assign_score(value, buckets):
+    for lower, upper, score in buckets:
+        if lower <= value <= upper:
+            return score
+    return 0  # Default if not matched
+
+# Apply scores
+df['Age Score'] = df['Age'].apply(lambda x: assign_score(x, age_buckets))
+df['Income Score'] = df['Income'].apply(lambda x: assign_score(x, income_buckets))
+df['Loan Score'] = df['Loan Amount'].apply(lambda x: assign_score(x, loan_buckets))
+df['Credit Score Bucket'] = df['Credit Score'].apply(lambda x: assign_score(x, credit_buckets))
+
+# Total Risk Score
+df['Total Risk Score'] = df[['Age Score', 'Income Score', 'Loan Score', 'Credit Score Bucket']].sum(axis=1)
+
+# Risk Tier Classification
+def classify_risk(score):
+    if score >= 300:
+        return 'Low Risk'
+    elif score >= 200:
+        return 'Medium Risk'
+    else:
+        return 'High Risk'
+
+df['Risk Tier'] = df['Total Risk Score'].apply(classify_risk)
+
+
+# 4. Export to Excel
+
+with pd.ExcelWriter("Credit_Risk_Model.xlsx", engine='xlsxwriter') as writer:
+    df.to_excel(writer, sheet_name='Applicant Scores', index=False)
+
+    # Write bucket references for transparency
+    pd.DataFrame(age_buckets, columns=['Min Age', 'Max Age', 'Score']).to_excel(writer, sheet_name='Age Buckets', index=False)
+    pd.DataFrame(income_buckets, columns=['Min Income', 'Max Income', 'Score']).to_excel(writer, sheet_name='Income Buckets', index=False)
+    pd.DataFrame(loan_buckets, columns=['Min Loan', 'Max Loan', 'Score']).to_excel(writer, sheet_name='Loan Buckets', index=False)
+    pd.DataFrame(credit_buckets, columns=['Min Score', 'Max Score', 'Score']).to_excel(writer, sheet_name='Credit Score Buckets', index=False)
+
+print("Excel Credit Risk Model file generated: Credit_Risk_Model.xlsx")
